@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+  </head>
+  <body>
+    <nav class="navbar navbar navbar-dark bg-primary sticky-top">
+      <a class="navbar-brand" href="https://github.com/willfurtado/colorizer" style="margin-left: 25px;">
+        <b>CS 194-26 Project 1</b>: Colorizing the <i>Prokudin-Gorskii</i> Photo Collection
+      </a>
+      <span class="navbar-text" style="margin-right: 25px;">
+        <a href="https://williamfurtado.com">William Furtado</a>
+      </span>
+    </nav>
+    <br></br>
+    <h2 style="margin-left: 25px; margin-right: 25px;"><b>Introduction</b></h2>
+    <p style="margin-left: 25px; margin-right: 25px;">
+      <a href="https://en.wikipedia.org/wiki/Sergey_Prokudin-Gorsky">Sergei Mikhailovich Prokudin-Gorskii</a> (1863-1944) [Сергей Михайлович Прокудин-Горский, to his Russian friends] was a man well ahead of his time. Convinced, as early as 1907, that color photography was the wave of the future, he won Tzar's special permission to travel across the vast Russian Empire and take color photographs of everything he saw including the only color portrait of Leo Tolstoy. And he really photographed everything: people, buildings, landscapes, railroads, bridges... thousands of color pictures! His idea was simple: record three exposures of every scene onto a glass plate using a red, a green, and a blue filter. Never mind that there was no way to print color photographs until much later -- he envisioned special projectors to be installed in "multimedia" classrooms all across Russia where the children would be able to learn about their vast country. Alas, his plans never materialized: he left Russia in 1918, right after the revolution, never to return again. Luckily, his RGB glass plate negatives, capturing the last years of the Russian Empire, survived and were purchased in 1948 by the Library of Congress. The LoC has recently digitized the negatives and made them available on-line.
+    </p>
+    <h2 style="margin-left: 25px; margin-right: 25px;"><b>Project Overview</b></h2>
+    <p style="margin-left: 25px; margin-right: 25px;">
+      The primary task for this project was to take the digitized <i>Prokudin-Gorskii</i> glass plate images and, using image processing techniques, automatically produce a color image with as few visual artifacts as possible. In order to do this, I extracted the three color channel images, placed them on top of each other, and aligned them to form a single RBG color image.
+    <h2 style="margin-left: 25px; margin-right: 25px;"><b>Algorithm</b></h2>
+    <div class="p-3 mb-2 bg-light text-dark" style="margin-left: 25px; margin-right: 25px;">
+      <pre>
+        <code>
+          def ssd(
+              *,
+              im1: np.ndarray,
+              im2: np.ndarray,
+              alpha: float = 0.2,
+          ):
+              """Returns the Sum of Squared Distances between `im1` and `im2`.
+
+              Parameters:
+                  im1 (np.ndarray): Image represented by 2D matrix
+                  im2 (np.ndarray): Image represented by 2D matrix
+                  alpha (float): Percentage of image to cut off each side
+
+              Returns:
+                  (float): SSD metric between input images
+              """
+
+              # Make sure arrays have same shape
+              assert im1.shape == im2.shape
+
+              x_cut, y_cut = (int(val * alpha) for val in im1.shape)
+              im1_reduced = im1[x_cut:-x_cut, y_cut:-y_cut]
+              im2_reduced = im2[x_cut:-x_cut, y_cut:-y_cut]
+
+              return np.sum(np.sum(np.square(np.subtract(im1_reduced, im2_reduced))))
+        </code>
+      </pre>
+    </div>
+    <div class="p-3 mb-2 bg-light text-dark" style="margin-left: 25px; margin-right: 25px;">
+      <pre>
+        <code>
+          def align_to_base(
+              *,
+              im: np.ndarray,
+              base_im: np.ndarray,
+              max_displacement: int = 15,
+              loss_f: Callable = ssd,
+          ) -> Tuple[float, np.ndarray, Tuple[float, float]]:
+              """Aligns an input image to the base image
+              Parameters:
+                  im (np.ndarray): Image represented by 2D matrix
+                  base_im (np.ndarray): Base image represented by 2D matrix to map
+                                  ``im`` to.
+                  max_displacement (int): The maximum number of pixels to try shifting
+                  loss_f (Callable): Function use to measure distance
+
+              Returns:
+                  (error, aligned image, displacement): Tuple representing the alignment
+              """
+              optimal_err, optimal_im, optimal_shift = float("inf"), None, None
+
+              for x_disp in range(-max_displacement, max_displacement + 1):
+                  for y_disp in range(-max_displacement, max_displacement + 1):
+                      candidate_im = np.roll(im, shift=y_disp, axis=0)
+                      candidate_im = np.roll(candidate_im, shift=x_disp, axis=1)
+                      candidate_error = loss_f(im1=base_im, im2=candidate_im)
+                      if candidate_error < optimal_err:
+                          optimal_err = candidate_error
+                          optimal_im = candidate_im
+                          optimal_shift = (x_disp, y_disp)
+
+              return optimal_err, optimal_im, optimal_shift
+        </code>
+      </pre>
+    </div>
+    <h2 style="margin-left: 25px; margin-right: 25px;"><b>Image Alignment (<code>JPEG</code>)</b></h2>
+    <p style="margin-left: 25px; margin-right: 25px;">
+      The results of my image colorizing algorithm, ran on the three JPEG files <code>cathedral.jpg</code>, <code>monastery.jpg</code>, and <code>tobolsk.jpg</code>  are shown below. I've included their (x,y) pixel adjustment for Red and Green color channels.
+    <div class="container">
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/cathedral.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/cathedral.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/monastery.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/monastery.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/tobolsk.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/tobolsk.jpg"></img>
+        </div>
+      </div>
+    </div>
+    <br></br>
+    <h2 style="margin-left: 25px; margin-right: 25px;"><b>Image Alignment (<code>TIF</code>)</b></h2>
+    <p style="margin-left: 25px; margin-right: 25px;">
+      The results of my image colorizing algorithm, ran on the eleven TIF files <code>church.tif</code>, <code>emir.tif</code>, <code>harvesters.tif</code>, <code>icon.tif</code>, <code>lady.tif</code>, <code>melons.tif</code>, <code>onion_church.tif</code>, <code>sculpture.tif</code>, <code>self_portrait.tif</code>, <code>three_generations.tif</code>, and <code>train.tif</code>  are shown below. I've included their (x,y) pixel adjustment for Red and Green color channels.
+    <div class="container">
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/church.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/church.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/emir.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/emir.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/harvesters.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/harvesters.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/icon.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/icon.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/lady.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/lady.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/melons.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/melons.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/onion_church.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/onion_church.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/sculpture.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/sculpture.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/self_portrait.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/self_portrait.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/three_generations.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/three_generations.jpg"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/train.jpg"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/train.jpg"></img>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
+  </body>
+</html>
