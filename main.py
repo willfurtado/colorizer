@@ -2,7 +2,8 @@
 import os
 
 import numpy as np
-from utils import *
+import skimage.io as skio
+from utils import align_full_image, convert_to_bgr_channels
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser()

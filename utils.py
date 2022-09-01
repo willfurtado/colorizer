@@ -1,7 +1,5 @@
 """Utility functions for CS194-26 Project 1"""
 
-import argparse
-import os
 from typing import Callable, Tuple
 
 import numpy as np
