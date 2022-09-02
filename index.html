@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -24,6 +25,11 @@
     <p style="margin-left: 25px; margin-right: 25px;">
       The primary task for this project was to take the digitized <i>Prokudin-Gorskii</i> glass plate images and, using image processing techniques, automatically produce a color image with as few visual artifacts as possible. In order to do this, I extracted the three color channel images, placed them on top of each other, and aligned them to form a single RBG color image.
     <h2 style="margin-left: 25px; margin-right: 25px;"><b>Algorithm</b></h2>
+      <p style="margin-left: 25px; margin-right: 25px;">
+      As described in the project specifications above, my naive algorithm performed an exhaustive search over a range of possible image displacements (i.e. (dx, dy)) and compared the shifted image to the base image. Each candidate image was then scored via a custom distance function. I used a modified form of the Sum of Squared Distances (SSD) that only considered the innermost 60% pixels by default. To increase performance, I used various <code>numpy</code> built-in arithmetic functions.
+      <br></br>
+      However, upon running this naive implementation on the larger <code>TIF</code> files, the algorithm was much too slow. To counteract this, I used an image pyramid and recursively called my naive implementation on a downsampled version of the original image. This process followed a "course to fine" workflow. The key functions I defined are below:
+    </p>
     <div class="p-3 mb-2 bg-light text-dark" style="margin-left: 25px; margin-right: 25px;">
       <pre>
         <code>
@@ -92,6 +98,60 @@
         </code>
       </pre>
     </div>
+    <div class="p-3 mb-2 bg-light text-dark" style="margin-left: 25px; margin-right: 25px;">
+      <pre>
+        <code>
+          def align_pyramid(
+              *,
+              im: np.ndarray,
+              base_im: np.ndarray,
+              depth: int = 5,
+              max_displacement: int = 15,
+              loss_f: Callable = ssd,
+          ) -> np.ndarray:
+              """Uses an image pyramid to align image channel to base
+              Parameters:
+                  im (np.ndarray): Image represented by 2D matrix
+                  base_im (np.ndarray): Base image represented by 2D matrix to map
+                                  ``im`` to.
+                  depth (int): The number of levels for the image pyramid
+                  max_displacement (int): The maximum number of pixels to try shifting
+                  loss_f (Callable): Function use to measure distance
+
+              Returns:
+                  (np.ndarray): Aligned image channel as a 2D matrix
+              """
+              if not depth:
+                  return im
+
+              scale_factor = 2 ** (depth - 1)
+
+              reduced_im = sktrans.rescale(im, 1 / scale_factor)
+              reduced_base_im = sktrans.rescale(base_im, 1 / scale_factor)
+
+              _, augmented_im, (x_delta, y_delta) = align_to_base(
+                  im=reduced_im,
+                  base_im=reduced_base_im,
+                  max_displacement=max_displacement,
+                  loss_f=loss_f,
+              )
+
+              im = shift_image(
+                  im=im,
+                  x_offset=(x_delta * scale_factor),
+                  y_offset=(y_delta * scale_factor),
+              )
+
+              return align_pyramid(
+                  im=im,
+                  base_im=base_im,
+                  depth=depth - 1,
+                  max_displacement=max_displacement,
+                  loss_f=loss_f,
+              )
+        </code>
+      </pre>
+    </div>
     <h2 style="margin-left: 25px; margin-right: 25px;"><b>Image Alignment (<code>JPEG</code>)</b></h2>
     <p style="margin-left: 25px; margin-right: 25px;">
       The results of my image colorizing algorithm, ran on the three JPEG files <code>cathedral.jpg</code>, <code>monastery.jpg</code>, and <code>tobolsk.jpg</code>  are shown below. I've included their (x,y) pixel adjustment for Red and Green color channels.
@@ -103,6 +163,7 @@
         <div class="col-md-auto">
           <img src="output/cathedral.jpg"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -111,6 +172,7 @@
         <div class="col-md-auto">
           <img src="output/monastery.jpg"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -119,6 +181,7 @@
         <div class="col-md-auto">
           <img src="output/tobolsk.jpg"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
     </div>
     <br></br>
@@ -126,95 +189,142 @@
     <p style="margin-left: 25px; margin-right: 25px;">
       The results of my image colorizing algorithm, ran on the eleven TIF files <code>church.tif</code>, <code>emir.tif</code>, <code>harvesters.tif</code>, <code>icon.tif</code>, <code>lady.tif</code>, <code>melons.tif</code>, <code>onion_church.tif</code>, <code>sculpture.tif</code>, <code>self_portrait.tif</code>, <code>three_generations.tif</code>, and <code>train.tif</code>  are shown below. I've included their (x,y) pixel adjustment for Red and Green color channels.
     <div class="container">
-      <div class="row justify-content-md-center">
+      <div class="row justify-content-md-center" style="padding-bottom: 15px;">
         <div class="col-md-auto">
-          <img src="original/church.jpg"></img>
+          <img src="original/women.jpg" width="400px" height="400px">
+          </img>
         </div>
         <div class="col-md-auto">
-          <img src="output/church.jpg"></img>
+          <img src="output/women.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/emir.jpg"></img>
+          <img src="original/flowers.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/emir.jpg"></img>
+          <img src="output/flowers.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/harvesters.jpg"></img>
+          <img src="original/river.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/harvesters.jpg"></img>
+          <img src="output/river.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/icon.jpg"></img>
+          <img src="original/harvesters.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/icon.jpg"></img>
+          <img src="output/harvesters.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/lady.jpg"></img>
+          <img src="original/icon.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/lady.jpg"></img>
+          <img src="output/icon.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/melons.jpg"></img>
+          <img src="original/lady.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/melons.jpg"></img>
+          <img src="output/lady.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/onion_church.jpg"></img>
+          <img src="original/melons.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/onion_church.jpg"></img>
+          <img src="output/melons.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/sculpture.jpg"></img>
+          <img src="original/onion_church.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/sculpture.jpg"></img>
+          <img src="output/onion_church.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/self_portrait.jpg"></img>
+          <img src="original/sculpture.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/self_portrait.jpg"></img>
+          <img src="output/sculpture.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/three_generations.jpg"></img>
+          <img src="original/self_portrait.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/three_generations.jpg"></img>
+          <img src="output/self_portrait.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
-          <img src="original/train.jpg"></img>
+          <img src="original/three_generations.jpg" width="400px" height="400px"></img>
         </div>
         <div class="col-md-auto">
-          <img src="output/train.jpg"></img>
+          <img src="output/three_generations.jpg" width="400px" height="400px"></img>
         </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/train.jpg" width="400px" height="400px"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/train.jpg" width="400px" height="400px"></img>
+        </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/church.jpg" width="400px" height="400px"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/church.jpg" width="400px" height="400px"></img>
+        </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/emir.jpg" width="400px" height="400px"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/emir.jpg" width="400px" height="400px"></img>
+        </div>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
       </div>
     </div>
+    <h2 style="margin-left: 25px; margin-right: 25px;"><b>Shortcomings</b></h2>
+    <p style="margin-left: 25px; margin-right: 25px;">
+      While my algorithm worked well on most inputs, it did not handle <code>emir.tif</code> or <code>church.tif</code> well at all. In fact, it looks quite bad. In the case of Emir, as the project specification alludes to: 
+      <br></br>
+      <i>Note that in the case of the Emir of Bukhara (show on right), the images to be matched do not actually have the same brightness values (they are different color channels).</i>
+      <br></br>
+      To account for this artifact, I used Canny edge detection in order to align images via pixel values on the edge rather than brightness values. This approach was much more successful.
+    </p>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
   </body>
 </html>

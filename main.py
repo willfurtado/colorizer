@@ -1,5 +1,6 @@
 """Main file for CS194-26 Project 1."""
 import os
+import sys
 
 import numpy as np
 import skimage.io as skio
@@ -18,7 +19,14 @@ if __name__ == "__main__":
 
         num_layers = int(np.ceil(np.log2(b.shape[0] / 200)))
 
-        im_out = align_full_image(b=b, g=g, r=r, depth=num_layers)
+        (
+            im_out,
+            (g_x_shift, g_y_shift),
+            (r_x_shift, r_y_shift),
+        ) = align_full_image(b=b, g=g, r=r, depth=num_layers)
+
+        sys.stdout.write(f"{imname} Green Shift: {(g_x_shift, g_y_shift)}")
+        sys.stdout.write(f"{imname} Red Shift: {(r_x_shift, r_y_shift)}")
 
         # save the image
         fname = f"output/{imname.replace('tif', 'jpg')}"

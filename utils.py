@@ -189,6 +189,8 @@ def align_pyramid(
     depth: int = 5,
     max_displacement: int = 15,
     loss_f: Callable = ssd,
+    x_shift: int = 0,
+    y_shift: int = 0,
 ) -> np.ndarray:
     """Uses an image pyramid to align image channel to base
     Parameters:
@@ -198,12 +200,14 @@ def align_pyramid(
         depth (int): The number of levels for the image pyramid
         max_displacement (int): The maximum number of pixels to try shifting
         loss_f (Callable): Function use to measure distance
+        x_shift (int): Current shift of pixels on `im` in x-direction
+        y_shift (int): Current shift of pixels on `im` in y-direction
 
     Returns:
         (np.ndarray): Aligned image channel as a 2D matrix
     """
     if not depth:
-        return im
+        return im, x_shift, y_shift
 
     scale_factor = 2 ** (depth - 1)
 
@@ -229,6 +233,8 @@ def align_pyramid(
         depth=depth - 1,
         max_displacement=max_displacement,
         loss_f=loss_f,
+        x_shift=x_shift + (x_delta * scale_factor),
+        y_shift=y_shift + (y_delta * scale_factor),
     )
 
 
@@ -251,7 +257,7 @@ def align_full_image(
         max_displacement (int): The maximum number of pixels to try shifting
         loss_f (Callable): Function use to measure distance
     """
-    ag = align_pyramid(
+    ag, g_x_shift, g_y_shift = align_pyramid(
         im=g,
         base_im=b,
         max_displacement=max_displacement,
@@ -259,7 +265,7 @@ def align_full_image(
         loss_f=loss_f,
     )
 
-    ar = align_pyramid(
+    ar, r_x_shift, r_y_shift = align_pyramid(
         im=r,
         base_im=b,
         max_displacement=max_displacement,
@@ -268,4 +274,8 @@ def align_full_image(
     )
 
     # create a color image
-    return np.dstack([ar, ag, b])
+    return (
+        np.dstack([ar, ag, b]),
+        (g_x_shift, g_y_shift),
+        (r_x_shift, r_y_shift),
+    )

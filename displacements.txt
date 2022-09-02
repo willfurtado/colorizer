@@ -1,0 +1,50 @@
+emir.tif Green Shift: (24, 49)
+emir.tif Red Shift: (43, 61)
+
+monastery.jpg Green Shift: (2, -3)
+monastery.jpg Red Shift: (2, 3)
+
+women.tif Green Shift: (10, -15)
+women.tif Red Shift: (18, 11)
+
+church.tif Green Shift: (4, 25)
+church.tif Red Shift: (465, 76)
+
+three_generations.tif Green Shift: (14, 52)
+three_generations.tif Red Shift: (12, 111)
+
+river.tif Green Shift: (25, 72)
+river.tif Red Shift: (47, 150)
+
+melons.tif Green Shift: (10, 81)
+melons.tif Red Shift: (14, 178)
+
+flowers.tif Green Shift: (-6, 46)
+flowers.tif Red Shift: (-28, 116)
+
+onion_church.tif Green Shift: (27, 51)
+onion_church.tif Red Shift: (37, 108)
+
+train.tif Green Shift: (6, 43)
+train.tif Red Shift: (32, 87)
+
+tobolsk.jpg Green Shift: (3, 3)
+tobolsk.jpg Red Shift: (3, 7)
+
+icon.tif Green Shift: (17, 41)
+icon.tif Red Shift: (23, 89)
+
+cathedral.jpg Green Shift: (2, 5)
+cathedral.jpg Red Shift: (3, 12)
+
+self_portrait.tif Green Shift: (29, 78)
+self_portrait.tif Red Shift: (37, 176)
+
+harvesters.tif Green Shift: (17, 59)
+harvesters.tif Red Shift: (14, 123)
+
+sculpture.tif Green Shift: (-11, 33)
+sculpture.tif Red Shift: (-27, 140)
+
+lady.tif Green Shift: (8, 55)
+lady.tif Red Shift: (12, 114)
