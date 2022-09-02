@@ -28,127 +28,25 @@
       <p style="margin-left: 25px; margin-right: 25px;">
       As described in the project specifications above, my naive algorithm performed an exhaustive search over a range of possible image displacements (i.e. (dx, dy)) and compared the shifted image to the base image. Each candidate image was then scored via a custom distance function. I used a modified form of the Sum of Squared Distances (SSD) that only considered the innermost 60% pixels by default. To increase performance, I used various <code>numpy</code> built-in arithmetic functions.
       <br></br>
-      However, upon running this naive implementation on the larger <code>TIF</code> files, the algorithm was much too slow. To counteract this, I used an image pyramid and recursively called my naive implementation on a downsampled version of the original image. This process followed a "course to fine" workflow. The key functions I defined are below:
+      However, upon running this naive implementation on the larger <code>TIF</code> files, the algorithm was much too slow. To counteract this, I used an image pyramid and recursively called my naive implementation on a downsampled version of the original image. This process followed a "course to fine" workflow. Pseudocode for the algorithm is provided below:
     </p>
     <div class="p-3 mb-2 bg-light text-dark" style="margin-left: 25px; margin-right: 25px;">
       <pre>
         <code>
-          def ssd(
-              *,
-              im1: np.ndarray,
-              im2: np.ndarray,
-              alpha: float = 0.2,
-          ):
-              """Returns the Sum of Squared Distances between `im1` and `im2`.
 
-              Parameters:
-                  im1 (np.ndarray): Image represented by 2D matrix
-                  im2 (np.ndarray): Image represented by 2D matrix
-                  alpha (float): Percentage of image to cut off each side
+            def align(im):
+              for each color in (green, red):
+                  new_color <- align(color, blue)
 
-              Returns:
-                  (float): SSD metric between input images
-              """
+              return stack_colors()
 
-              # Make sure arrays have same shape
-              assert im1.shape == im2.shape
-
-              x_cut, y_cut = (int(val * alpha) for val in im1.shape)
-              im1_reduced = im1[x_cut:-x_cut, y_cut:-y_cut]
-              im2_reduced = im2[x_cut:-x_cut, y_cut:-y_cut]
-
-              return np.sum(np.sum(np.square(np.subtract(im1_reduced, im2_reduced))))
-        </code>
-      </pre>
-    </div>
-    <div class="p-3 mb-2 bg-light text-dark" style="margin-left: 25px; margin-right: 25px;">
-      <pre>
-        <code>
-          def align_to_base(
-              *,
-              im: np.ndarray,
-              base_im: np.ndarray,
-              max_displacement: int = 15,
-              loss_f: Callable = ssd,
-          ) -> Tuple[float, np.ndarray, Tuple[float, float]]:
-              """Aligns an input image to the base image
-              Parameters:
-                  im (np.ndarray): Image represented by 2D matrix
-                  base_im (np.ndarray): Base image represented by 2D matrix to map
-                                  ``im`` to.
-                  max_displacement (int): The maximum number of pixels to try shifting
-                  loss_f (Callable): Function use to measure distance
-
-              Returns:
-                  (error, aligned image, displacement): Tuple representing the alignment
-              """
-              optimal_err, optimal_im, optimal_shift = float("inf"), None, None
-
-              for x_disp in range(-max_displacement, max_displacement + 1):
-                  for y_disp in range(-max_displacement, max_displacement + 1):
-                      candidate_im = np.roll(im, shift=y_disp, axis=0)
-                      candidate_im = np.roll(candidate_im, shift=x_disp, axis=1)
-                      candidate_error = loss_f(im1=base_im, im2=candidate_im)
-                      if candidate_error < optimal_err:
-                          optimal_err = candidate_error
-                          optimal_im = candidate_im
-                          optimal_shift = (x_disp, y_disp)
-
-              return optimal_err, optimal_im, optimal_shift
-        </code>
-      </pre>
-    </div>
-    <div class="p-3 mb-2 bg-light text-dark" style="margin-left: 25px; margin-right: 25px;">
-      <pre>
-        <code>
-          def align_pyramid(
-              *,
-              im: np.ndarray,
-              base_im: np.ndarray,
-              depth: int = 5,
-              max_displacement: int = 15,
-              loss_f: Callable = ssd,
-          ) -> np.ndarray:
-              """Uses an image pyramid to align image channel to base
-              Parameters:
-                  im (np.ndarray): Image represented by 2D matrix
-                  base_im (np.ndarray): Base image represented by 2D matrix to map
-                                  ``im`` to.
-                  depth (int): The number of levels for the image pyramid
-                  max_displacement (int): The maximum number of pixels to try shifting
-                  loss_f (Callable): Function use to measure distance
-
-              Returns:
-                  (np.ndarray): Aligned image channel as a 2D matrix
-              """
-              if not depth:
-                  return im
-
-              scale_factor = 2 ** (depth - 1)
-
-              reduced_im = sktrans.rescale(im, 1 / scale_factor)
-              reduced_base_im = sktrans.rescale(base_im, 1 / scale_factor)
-
-              _, augmented_im, (x_delta, y_delta) = align_to_base(
-                  im=reduced_im,
-                  base_im=reduced_base_im,
-                  max_displacement=max_displacement,
-                  loss_f=loss_f,
-              )
-
-              im = shift_image(
-                  im=im,
-                  x_offset=(x_delta * scale_factor),
-                  y_offset=(y_delta * scale_factor),
-              )
-
-              return align_pyramid(
-                  im=im,
-                  base_im=base_im,
-                  depth=depth - 1,
-                  max_displacement=max_displacement,
-                  loss_f=loss_f,
-              )
+            def align(im):
+                for each layer of image pyramid:
+                    for each possible shift:
+                        current_score <- score(shift)
+                        if better:
+                          best_shift <- shift
+                return shift_image(im, best_shift)
         </code>
       </pre>
     </div>
@@ -163,7 +61,7 @@
         <div class="col-md-auto">
           <img src="output/cathedral.jpg"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (2, 5), Red Shift: (3, 12)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -172,7 +70,7 @@
         <div class="col-md-auto">
           <img src="output/monastery.jpg"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (2, -3), Red Shift: (2, 3)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -181,7 +79,7 @@
         <div class="col-md-auto">
           <img src="output/tobolsk.jpg"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (3, 3), Red Shift: (3, 7)</p>
       </div>
     </div>
     <br></br>
@@ -206,7 +104,7 @@
         <div class="col-md-auto">
           <img src="output/flowers.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (-6, 46), Red Shift: (-28, 116)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -215,7 +113,7 @@
         <div class="col-md-auto">
           <img src="output/river.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (25, 72), Red Shift: (47, 150)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -224,7 +122,7 @@
         <div class="col-md-auto">
           <img src="output/harvesters.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (17, 59), Red Shift: (14, 123)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -233,7 +131,7 @@
         <div class="col-md-auto">
           <img src="output/icon.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (17, 41), Red Shift: (23, 89)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -242,7 +140,7 @@
         <div class="col-md-auto">
           <img src="output/lady.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (8, 55), Red Shift: (12, 114)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -251,7 +149,7 @@
         <div class="col-md-auto">
           <img src="output/melons.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (10, 81), Red Shift: (14, 178)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -260,7 +158,7 @@
         <div class="col-md-auto">
           <img src="output/onion_church.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (27, 51), Red Shift: (37, 108)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -269,7 +167,7 @@
         <div class="col-md-auto">
           <img src="output/sculpture.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (-11, 33), Red Shift: (-27, 140)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -278,7 +176,7 @@
         <div class="col-md-auto">
           <img src="output/self_portrait.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (29, 78), Red Shift: (37, 176)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -287,7 +185,7 @@
         <div class="col-md-auto">
           <img src="output/three_generations.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (14, 52), Red Shift: (12, 111)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -296,7 +194,7 @@
         <div class="col-md-auto">
           <img src="output/train.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (6, 43), Red Shift: (32, 87)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -305,7 +203,7 @@
         <div class="col-md-auto">
           <img src="output/church.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (4, 25), Red Shift: (465, 76)</p>
       </div>
       <div class="row justify-content-md-center">
         <div class="col-md-auto">
@@ -314,7 +212,7 @@
         <div class="col-md-auto">
           <img src="output/emir.jpg" width="400px" height="400px"></img>
         </div>
-        <p style="text-align: center; padding-top: 15px">Green Shift: (10, -15), Red Shift: (18, 11)</p>
+        <p style="text-align: center; padding-top: 15px">Green Shift: (24, 49), Red Shift: (43, 61)</p>
       </div>
     </div>
     <h2 style="margin-left: 25px; margin-right: 25px;"><b>Shortcomings</b></h2>

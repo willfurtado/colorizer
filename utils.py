@@ -6,6 +6,7 @@ import numpy as np
 import skimage as sk
 import skimage.io as skio
 import skimage.transform as sktrans
+from skimage.feature import canny
 
 
 def convert_to_bgr_channels(
@@ -116,7 +117,7 @@ def shift_image(
     Parameters:
         im (np.ndarray): Image represented by 2D matrix
         x_offset (int): The number of pixels to shift image in x direction
-                y_offset (int): The number of pixels to shift image in y direction
+        y_offset (int): The number of pixels to shift image in y direction
     """
     v_im = np.roll(im, shift=y_offset, axis=0)
     return np.roll(v_im, shift=x_offset, axis=1)
@@ -146,7 +147,34 @@ def ssd(
     im1_reduced = im1[x_cut:-x_cut, y_cut:-y_cut]
     im2_reduced = im2[x_cut:-x_cut, y_cut:-y_cut]
 
-    return np.sum(np.sum(np.square(np.subtract(im1_reduced, im2_reduced))))
+    return np.sum(np.sum(np.square(im1_reduced - im2_reduced)))
+
+
+def ssd_edge_detection(
+    *,
+    im1: np.ndarray,
+    im2: np.ndarray,
+    alpha: float = 0.2,
+):
+    """Returns the Sum of Squared Distances between `im1` and `im2`.
+
+    Parameters:
+        im1 (np.ndarray): Image represented by 2D matrix
+        im2 (np.ndarray): Image represented by 2D matrix
+        alpha (float): Percentage of image to cut off each side
+
+    Returns:
+        (float): SSD metric between input images
+    """
+
+    # Make sure arrays have same shape
+    assert im1.shape == im2.shape
+
+    x_cut, y_cut = (int(val * alpha) for val in im1.shape)
+    im1_reduced = im1[x_cut:-x_cut, y_cut:-y_cut]
+    im2_reduced = im2[x_cut:-x_cut, y_cut:-y_cut]
+
+    return np.sum(np.sum(np.square(im1_reduced ^ im2_reduced)))
 
 
 def align_to_base(
@@ -189,6 +217,7 @@ def align_pyramid(
     depth: int = 5,
     max_displacement: int = 15,
     loss_f: Callable = ssd,
+    edge_detection: bool = False,
     x_shift: int = 0,
     y_shift: int = 0,
 ) -> np.ndarray:
@@ -200,6 +229,7 @@ def align_pyramid(
         depth (int): The number of levels for the image pyramid
         max_displacement (int): The maximum number of pixels to try shifting
         loss_f (Callable): Function use to measure distance
+        edge_detection (bool): Option to use edge detection for alignment
         x_shift (int): Current shift of pixels on `im` in x-direction
         y_shift (int): Current shift of pixels on `im` in y-direction
 
@@ -214,12 +244,23 @@ def align_pyramid(
     reduced_im = sktrans.rescale(im, 1 / scale_factor)
     reduced_base_im = sktrans.rescale(base_im, 1 / scale_factor)
 
-    _, augmented_im, (x_delta, y_delta) = align_to_base(
-        im=reduced_im,
-        base_im=reduced_base_im,
-        max_displacement=max_displacement,
-        loss_f=loss_f,
-    )
+    if edge_detection:
+        im_edges = canny(reduced_im, sigma=3)
+        base_edges = canny(reduced_base_im, sigma=3)
+
+        _, _, (x_delta, y_delta) = align_to_base(
+            im=im_edges,
+            base_im=base_edges,
+            max_displacement=max_displacement,
+            loss_f=ssd_edge_detection,
+        )
+    else:
+        _, _, (x_delta, y_delta) = align_to_base(
+            im=reduced_im,
+            base_im=reduced_base_im,
+            max_displacement=max_displacement,
+            loss_f=loss_f,
+        )
 
     im = shift_image(
         im=im,
@@ -233,6 +274,7 @@ def align_pyramid(
         depth=depth - 1,
         max_displacement=max_displacement,
         loss_f=loss_f,
+        edge_detection=edge_detection,
         x_shift=x_shift + (x_delta * scale_factor),
         y_shift=y_shift + (y_delta * scale_factor),
     )
@@ -246,6 +288,7 @@ def align_full_image(
     depth: int = 5,
     max_displacement: int = 15,
     loss_f: Callable = ssd,
+    edge_detection: bool = False,
 ) -> np.ndarray:
     """Aligns green and red channels to blue channel
 
@@ -256,11 +299,13 @@ def align_full_image(
         depth (int): The number of levels for the image pyramid
         max_displacement (int): The maximum number of pixels to try shifting
         loss_f (Callable): Function use to measure distance
+        edge_detection (bool): Option to use edge detection for alignment
     """
     ag, g_x_shift, g_y_shift = align_pyramid(
         im=g,
         base_im=b,
         max_displacement=max_displacement,
+        edge_detection=edge_detection,
         depth=depth,
         loss_f=loss_f,
     )
@@ -269,6 +314,7 @@ def align_full_image(
         im=r,
         base_im=b,
         max_displacement=max_displacement,
+        edge_detection=edge_detection,
         depth=depth,
         loss_f=loss_f,
     )

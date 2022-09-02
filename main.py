@@ -7,11 +7,6 @@ import skimage.io as skio
 from utils import align_full_image, convert_to_bgr_channels
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("files", nargs="+")
-    # args = parser.parse_args()
-
-    print(f"Runnning for: {os.listdir('data')}")
     for imname in os.listdir("data"):
         if not imname.endswith(".jpg") and not imname.endswith(".tif"):
             continue
