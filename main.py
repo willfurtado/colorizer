@@ -12,6 +12,8 @@ if __name__ == "__main__":
             continue
         b, g, r = convert_to_bgr_channels(filepath=f"data/{imname}")
 
+        # Decide on number of resolution layers for image pyramid
+        # based on original resolution of the image
         num_layers = int(np.ceil(np.log2(b.shape[0] / 200)))
 
         (

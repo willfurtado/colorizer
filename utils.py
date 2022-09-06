@@ -2,11 +2,11 @@
 
 from typing import Callable, Tuple
 
+import cv2
 import numpy as np
 import skimage as sk
 import skimage.io as skio
 import skimage.transform as sktrans
-from skimage.feature import canny
 
 
 def convert_to_bgr_channels(
@@ -220,7 +220,7 @@ def align_pyramid(
     edge_detection: bool = False,
     x_shift: int = 0,
     y_shift: int = 0,
-) -> np.ndarray:
+) -> Tuple[np.ndarray, int, int]:
     """Uses an image pyramid to align image channel to base
     Parameters:
         im (np.ndarray): Image represented by 2D matrix
@@ -234,7 +234,9 @@ def align_pyramid(
         y_shift (int): Current shift of pixels on `im` in y-direction
 
     Returns:
-        (np.ndarray): Aligned image channel as a 2D matrix
+        (np.ndarray, int, int): Aligned image channel as a 2D matrix and
+                corresponding x, y offset
+
     """
     if not depth:
         return im, x_shift, y_shift
@@ -245,8 +247,8 @@ def align_pyramid(
     reduced_base_im = sktrans.rescale(base_im, 1 / scale_factor)
 
     if edge_detection:
-        im_edges = canny(reduced_im, sigma=3)
-        base_edges = canny(reduced_base_im, sigma=3)
+        im_edges = cv2.Canny(np.uint8(reduced_im * 255), 0, 255)
+        base_edges = cv2.Canny(np.uint8(reduced_base_im * 255), 0, 255)
 
         _, _, (x_delta, y_delta) = align_to_base(
             im=im_edges,
@@ -289,7 +291,7 @@ def align_full_image(
     max_displacement: int = 15,
     loss_f: Callable = ssd,
     edge_detection: bool = False,
-) -> np.ndarray:
+) -> Tuple[np.ndarray, Tuple[int, int], Tuple[int, int]]:
     """Aligns green and red channels to blue channel
 
     Parameters:
@@ -300,6 +302,11 @@ def align_full_image(
         max_displacement (int): The maximum number of pixels to try shifting
         loss_f (Callable): Function use to measure distance
         edge_detection (bool): Option to use edge detection for alignment
+
+    Returns:
+        (np.ndarray, (int, int), (int, int)): A three-element tuple containing
+                the corrected image, the green channel alignment vector and
+                the red channel alignment vector
     """
     ag, g_x_shift, g_y_shift = align_pyramid(
         im=g,

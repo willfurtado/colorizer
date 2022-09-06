@@ -28,7 +28,7 @@
       <p style="margin-left: 25px; margin-right: 25px;">
       As described in the project specifications above, my naive algorithm performed an exhaustive search over a range of possible image displacements (i.e. (dx, dy)) and compared the shifted image to the base image. Each candidate image was then scored via a custom distance function. I used a modified form of the Sum of Squared Distances (SSD) that only considered the innermost 60% pixels by default. To increase performance, I used various <code>numpy</code> built-in arithmetic functions.
       <br></br>
-      However, upon running this naive implementation on the larger <code>TIF</code> files, the algorithm was much too slow. To counteract this, I used an image pyramid and recursively called my naive implementation on a downsampled version of the original image. This process followed a "course to fine" workflow. Pseudocode for the algorithm is provided below:
+      However, upon running this naive implementation on the larger <code>TIF</code> files, the algorithm was much too slow. To counteract this, I used an image pyramid and recursively called my naive implementation on a downsampled version of the original image. This process followed a "course to fine" workflow. This allowed me to search a large range of pixel values while not sacrificing code efficiency. Pseudocode for the algorithm is provided below:
     </p>
     <div class="p-3 mb-2 bg-light text-dark" style="margin-left: 25px; margin-right: 25px;">
       <pre>
@@ -221,8 +221,26 @@
       <br></br>
       <i>Note that in the case of the Emir of Bukhara (show on right), the images to be matched do not actually have the same brightness values (they are different color channels).</i>
       <br></br>
-      To account for this artifact, I used Canny edge detection in order to align images via pixel values on the edge rather than brightness values. This approach was much more successful.
+      To account for this artifact, I used Canny edge detection in order to align images via pixel values on the edge rather than brightness values. The process of edge detection allowed for alignment between color channels purely based on the features in the image rather than any associated brightness values. This approach was much more effective, as demonstrated below:
     </p>
+    <div class="container">
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/emir.jpg" width="400px" height="400px"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/emir_edge_detection.jpg" width="400px" height="400px"></img>
+        </div>
+      </div>
+      <div class="row justify-content-md-center">
+        <div class="col-md-auto">
+          <img src="original/church.jpg" width="400px" height="400px"></img>
+        </div>
+        <div class="col-md-auto">
+          <img src="output/church_edge_detection.jpg" width="400px" height="400px"></img>
+        </div>
+      </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
   </body>
 </html>
